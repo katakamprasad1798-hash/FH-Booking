@@ -3,13 +3,16 @@ import { fetchBookings } from '../api';
 import DashboardLayout from '../components/DashboardLayout';
 import { Users, IndianRupee, CreditCard, Clock, TrendingUp } from 'lucide-react';
 
+import DataTable from '../components/DataTable';
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalBookings: 0,
     totalRevenue: 0,
     advanceCollected: 0,
     pendingBalance: 0,
-    recentBookings: []
+    recentBookings: [],
+    allBookings: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +35,8 @@ export default function Dashboard() {
         setStats({
           totalBookings: bookings.length,
           ...summary,
-          recentBookings: bookings.slice(0, 5) // Last 5 bookings
+          recentBookings: bookings.slice(0, 5), // Keep for legacy if needed
+          allBookings: bookings
         });
       } catch (err) {
         console.error("Error loading dashboard stats:", err);
@@ -43,6 +47,13 @@ export default function Dashboard() {
 
     loadStats();
   }, []);
+
+  const columns = [
+    { header: 'Customer', accessor: 'user_name' },
+    { header: 'Hall', accessor: 'hall_type' },
+    { header: 'Date', cell: (row) => new Date(row.function_date).toLocaleDateString() },
+    { header: 'Amount', cell: (row) => `₹${row.total_amount.toLocaleString()}` },
+  ];
 
   const statCards = [
     { title: 'Total Bookings', value: stats.totalBookings, icon: Users, color: '#4f46e5' },
@@ -89,33 +100,14 @@ export default function Dashboard() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
             {/* Recent Bookings */}
-            <div className="surface" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Recent Bookings</h3>
-                <TrendingUp size={18} color="var(--text-muted)" />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="surface" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Recent Bookings</h3>
+                  <TrendingUp size={18} color="var(--text-muted)" />
+                </div>
               </div>
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Customer</th>
-                      <th>Hall</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recentBookings.map((booking) => (
-                      <tr key={booking.id}>
-                        <td style={{ fontWeight: '500' }}>{booking.user_name}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{booking.hall_type}</td>
-                        <td>{new Date(booking.function_date).toLocaleDateString()}</td>
-                        <td style={{ fontWeight: '600' }}>₹{booking.total_amount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable columns={columns} data={stats.allBookings} initialPageSize={5} title="Recent Bookings" />
             </div>
 
             {/* Quick Actions / Tips */}

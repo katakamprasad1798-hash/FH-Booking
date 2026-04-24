@@ -3,7 +3,8 @@ import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../a
 import DashboardLayout from '../components/DashboardLayout';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import { Plus, Edit, Trash2, Eye, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, CheckCircle, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const initialFormData = { 
   function_type: '',
@@ -181,10 +182,63 @@ export default function BookingHall() {
     }
   ];
 
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const bstr = event.target.result;
+      const workbook = XLSX.read(bstr, { type: 'binary' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      
+      const newBookings = jsonData.map(row => {
+        const obj = {};
+        // Map common headers to internal keys
+        Object.keys(row).forEach(header => {
+          let key = header.toLowerCase().replace(/\s+/g, '_');
+          obj[key] = row[header];
+        });
+        return { ...initialFormData, ...obj };
+      });
+
+      if (window.confirm(`Import ${newBookings.length} records from ${file.name}?`)) {
+        try {
+          setLoading(true);
+          for (let booking of newBookings) {
+            await createBooking(booking);
+          }
+          alert('Import successful!');
+          loadData();
+        } catch (err) {
+          alert('Error during import: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset for next use
+  };
+
   const headerAction = (
-    <button className="btn btn-primary" onClick={handleOpenCreate}>
-      <Plus size={16} /> Create Booking
-    </button>
+    <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <input 
+        type="file" 
+        id="import-file" 
+        accept=".csv,.xlsx,.xls" 
+        style={{ display: 'none' }} 
+        onChange={handleImportFile} 
+      />
+      <label htmlFor="import-file" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Download size={16} style={{ transform: 'rotate(180deg)' }} /> Import (CSV/Excel)
+      </label>
+      <button className="btn btn-primary" onClick={handleOpenCreate}>
+        <Plus size={16} /> Create Booking
+      </button>
+    </div>
   );
 
   return (

@@ -3,7 +3,8 @@ import { fetchCertificates, createCertificate, updateCertificate, deleteCertific
 import DashboardLayout from '../components/DashboardLayout';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import { Plus, Edit, Trash2, Eye, Printer } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Printer, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const initialFormData = {
   function_type: 'Marriage',
@@ -41,6 +42,49 @@ export default function Certificate() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const bstr = event.target.result;
+      const workbook = XLSX.read(bstr, { type: 'binary' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      const newCerts = jsonData.map(row => {
+        const obj = {};
+        Object.keys(row).forEach(header => {
+          let key = header.toLowerCase().replace(/\s+/g, '_');
+          // Handle Bridegroom S/O etc
+          if (key.includes('s/o')) key = 'bridegroom_so';
+          if (key.includes('d/o')) key = 'bride_do';
+          obj[key] = row[header];
+        });
+        return { ...initialFormData, ...obj };
+      });
+
+      if (window.confirm(`Import ${newCerts.length} records from ${file.name}?`)) {
+        try {
+          setLoading(true);
+          for (let cert of newCerts) {
+            await createCertificate(cert);
+          }
+          alert('Import successful!');
+          loadData();
+        } catch (err) {
+          alert('Error during import: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
   };
 
   const handleOpenCreate = () => {
@@ -102,7 +146,7 @@ export default function Certificate() {
           <h3 style="text-align: center; text-decoration: underline; margin-bottom: 40px; font-weight: bold;">TO WHOM IT MAY CONCERN</h3>
 
           <div style="font-size: 1.2rem; line-height: 2; text-align: left;">
-            <p>This is to certify that the marriage between the following Bride and Bridgeroom has been performed at our Function Hall on 
+            <p style="text-align: justify; text-indent: 50px;">This is to certify that the marriage between the following Bride and Bridgeroom has been performed at our Function Hall on 
                <span style="font-weight: bold; text-decoration: underline; text-transform: capitalize;">${formatDate(row.function_date)}</span> 
                Under Receipt No. <span style="font-weight: bold; text-decoration: underline;  text-transform: capitalize;">${row.receipt_no}</span> 
                Booked on <span style="font-weight: bold; text-decoration: underline;  text-transform: capitalize;">${formatDate(row.booking_date)}</span>
@@ -219,9 +263,15 @@ export default function Certificate() {
   ];
 
   const headerAction = (
-    <button className="btn btn-primary" onClick={handleOpenCreate}>
-      <Plus size={16} /> Create Certificate
-    </button>
+    <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <input type="file" id="import-cert-file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleImportFile} />
+      <label htmlFor="import-cert-file" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Download size={16} style={{ transform: 'rotate(180deg)' }} /> Import (CSV/Excel)
+      </label>
+      <button className="btn btn-primary" onClick={handleOpenCreate}>
+        <Plus size={16} /> Create Certificate
+      </button>
+    </div>
   );
 
   return (
