@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import BookingHall from './pages/BookingHall';
+import Dashboard from './pages/Dashboard';
 import Billing from './pages/Billing';
 import Certificate from './pages/Certificate';
 import SignUp from './pages/SignUp';
@@ -24,7 +25,8 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
         
-        <Route path="/" element={<Navigate to="/bookings" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/bookings" element={<PrivateRoute><BookingHall /></PrivateRoute>} />
         <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
         <Route path="/certificate" element={<PrivateRoute><Certificate /></PrivateRoute>} />

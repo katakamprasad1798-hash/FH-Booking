@@ -127,6 +127,24 @@ export default function BookingHall() {
     }
   };
 
+  const getStatus = (row) => {
+    const today = new Date().toISOString().split('T')[0];
+    const balance = parseFloat(row.balance_amount) || 0;
+    const advance = parseFloat(row.advance_amount) || 0;
+    const total = parseFloat(row.total_amount) || 0;
+
+    if (row.function_date && row.function_date < today) {
+      return { label: 'Completed', className: 'badge-completed' };
+    }
+    if (balance <= 0 && total > 0) {
+      return { label: 'Paid', className: 'badge-paid' };
+    }
+    if (advance > 0) {
+      return { label: 'Partially Paid', className: 'badge-partial' };
+    }
+    return { label: 'Pending', className: 'badge-pending' };
+  };
+
   const columns = [
     { header: 'Function Date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
     { header: 'Customer', accessor: 'user_name' },
@@ -136,10 +154,8 @@ export default function BookingHall() {
     { 
       header: 'Status', 
       cell: (row) => {
-        const statusClass = row.status === 'Paid' ? 'badge-paid' : 
-                            row.status === 'Completed' ? 'badge-completed' : 
-                            'badge-inprogress';
-        return <span className={`badge ${statusClass}`}>{row.status || 'In Progress'}</span>;
+        const { label, className } = getStatus(row);
+        return <span className={`badge ${className}`}>{label}</span>;
       }
     },
     { 
