@@ -1,29 +1,56 @@
-import { UserCircle, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, Bell } from 'lucide-react';
 
-export default function TopNavbar() {
-  const navigate = useNavigate();
+export default function TopNavbar({ title, headerAction }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
 
   return (
     <nav className="top-navbar">
       <div className="nav-brand">
-        <img src="./src/assets/logo.png" alt="Logo" className="nav-logo" />
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--primary)' }}>Sri Lakshmi Srungara Vallabha Function Hall</span>
+        <span className="top-navbar-title">{title}</span>
       </div>
 
-      <div className="nav-actions">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        {/* Search Input */}
+        <div className="navbar-search-container">
+          <Search size={16} className="navbar-search-icon" />
+          <input 
+            type="text" 
+            className="navbar-search-input" 
+            placeholder="Search bookings..." 
+          />
+        </div>
+
+        {/* Dynamic page-level actions (e.g. Create Booking, Import) */}
+        {headerAction && (
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            {headerAction}
+          </div>
+        )}
+
+        {/* Notifications */}
+        <button className="notification-btn" title="Notifications">
+          <Bell size={20} />
+        </button>
+
+        {/* User Profile Info */}
         <div className="profile-menu">
-          <UserCircle size={24} color="var(--text-muted)" />
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: '700',
+            color: '#ffffff',
+            fontSize: '0.9rem',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+            {user.name ? user.name[0].toUpperCase() : 'A'}
+          </div>
           <span className="profile-name">{user.name || 'Admin'}</span>
-          <button className="btn-icon" onClick={handleLogout} title="Logout">
-            <LogOut size={20} />
-          </button>
         </div>
       </div>
     </nav>

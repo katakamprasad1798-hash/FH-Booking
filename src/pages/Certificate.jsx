@@ -19,6 +19,19 @@ const initialFormData = {
   requestor_name: ''
 };
 
+const formatTime12 = (timeStr) => {
+  if (!timeStr) return '';
+  const normalized = String(timeStr).trim();
+  if (/am|pm/i.test(normalized)) return normalized;
+  const match = normalized.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return normalized;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${period}`;
+};
+
 export default function Certificate() {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +39,8 @@ export default function Certificate() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewData, setViewData] = useState(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   const [formData, setFormData] = useState(initialFormData);
 
@@ -159,10 +174,10 @@ export default function Certificate() {
               <div style="margin-left: 105px;">Daughter Of <span style="font-weight: bold; color: #1e3a8a; text-decoration: underline; text-transform: capitalize;">${row.bride_do}</span></div>
             </div>
 
-            <p>The marriage was held successfully at our Function Hall at <span style="font-weight: bold; text-decoration: underline;">${row.function_time}</span>
+            <p>The marriage was held successfully at our Function Hall at <span style="font-weight: bold; text-decoration: underline;">${formatTime12(row.function_time)}</span>
             On <span style="font-weight: bold; text-decoration: underline;  text-transform: capitalize;">${formatDate(row.function_date)} {${getDayName(row.function_date)}}</span></p>
             
-            <p style="margin-top: 30px;">This certificate has been issued on the request of Sri / Smt. <span style="font-weight: bold; color: #1e3a8a; text-decoration: underline; text-transform: capitalize;">${row.bride_do}</span> and on verification of the records</p>
+            <p style="margin-top: 30px;">This certificate has been issued on the request of Sri / Smt. <span style="font-weight: bold; color: #1e3a8a; text-decoration: underline; text-transform: capitalize;">${row.requestor_name || row.bride_do}</span> and on verification of the records</p>
           </div>
 
           <!-- Bottom Signature Area -->
@@ -192,31 +207,52 @@ export default function Certificate() {
       </div>
     `;
 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write('<html><head><title>Marriage Certificate</title>');
-    printWindow.document.write(`
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+    }
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write('<html><head><title>Marriage Certificate</title>');
+    iframeDoc.write(`
       <style>
         @page { size: A4; margin: 0; }
-        body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: 'Times New Roman', Times, serif; }
       </style>
     `);
-    printWindow.document.write('</head><body>');
-    printWindow.document.write(printContent);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
+    iframeDoc.write('</head><body>');
+    iframeDoc.write(printContent);
+    iframeDoc.write('</body></html>');
+    iframeDoc.close();
+
     setTimeout(() => {
-      printWindow.print();
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
     }, 500);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this certificate record?")) {
-      try {
-        await deleteCertificate(id);
-        loadData();
-      } catch (err) {
-        alert(err.message);
-      }
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setIsConfirmDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteCertificate(deleteId);
+      setIsConfirmDeleteOpen(false);
+      setDeleteId(null);
+      loadData();
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -254,7 +290,7 @@ export default function Certificate() {
           <button className="btn-icon" onClick={() => handleOpenEdit(row)} title="Edit" style={{ color: 'var(--text-main)' }}>
             <Edit size={18} />
           </button>
-          <button className="btn-icon" onClick={() => handleDelete(row.id)} title="Delete" style={{ color: '#ef4444' }}>
+          <button className="btn-icon" onClick={() => handleDeleteClick(row.id)} title="Delete" style={{ color: '#ef4444' }}>
             <Trash2 size={18} />
           </button>
         </div>
@@ -333,13 +369,24 @@ export default function Certificate() {
               <p><strong>Receipt No:</strong> {viewData.receipt_no}</p>
               <p><strong>Bridegroom:</strong> {viewData.bridegroom}</p>
               <p><strong>Bride:</strong> {viewData.bride}</p>
-              <p><strong>Date:</strong> {viewData.function_date} ({viewData.function_time})</p>
+              <p><strong>Date:</strong> {viewData.function_date} ({formatTime12(viewData.function_time)})</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setIsViewOpen(false)}>Close</button>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isConfirmDeleteOpen} onClose={() => setIsConfirmDeleteOpen(false)} title="Confirm Delete">
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <p>Are you sure you want to delete this certificate record? This action cannot be undone.</p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsConfirmDeleteOpen(false)}>Cancel</button>
+            <button type="button" className="btn btn-primary" style={{ backgroundColor: 'var(--danger)' }} onClick={handleConfirmDelete}>Delete</button>
+          </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );

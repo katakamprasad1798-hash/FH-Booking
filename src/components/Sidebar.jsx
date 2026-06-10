@@ -1,9 +1,21 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FileBadge, Calendar } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Receipt, FileBadge, Calendar, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
     <aside className="sidebar">
+      <div className="sidebar-header">
+        <img src="./src/assets/logo.png" alt="Logo" className="sidebar-logo" />
+        <span className="sidebar-brand">LuxeHalls</span>
+      </div>
+
       <nav className="sidebar-nav">
         <NavLink 
           to="/dashboard" 
@@ -34,6 +46,13 @@ export default function Sidebar() {
           Certificate
         </NavLink>
       </nav>
+
+      <div className="sidebar-footer">
+        <button className="sidebar-logout" onClick={handleLogout} title="Logout">
+          <LogOut size={20} />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }

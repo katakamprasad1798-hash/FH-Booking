@@ -56,10 +56,10 @@ export default function Dashboard() {
   ];
 
   const statCards = [
-    { title: 'Total Bookings', value: stats.totalBookings, icon: Users, color: '#4f46e5' },
-    { title: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: IndianRupee, color: '#10b981' },
-    { title: 'Advance Collected', value: `₹${stats.advanceCollected.toLocaleString()}`, icon: CreditCard, color: '#3b82f6' },
-    { title: 'Pending Balance', value: `₹${stats.pendingBalance.toLocaleString()}`, icon: Clock, color: '#f59e0b' },
+    { title: 'Total Bookings', value: stats.totalBookings, icon: Users, color: '#4f46e5', trend: '+ 12% Higher', trendColor: 'var(--success)' },
+    { title: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: IndianRupee, color: '#10b981', trend: '+ 8% Higher', trendColor: 'var(--success)' },
+    { title: 'Advance Collected', value: `₹${stats.advanceCollected.toLocaleString()}`, icon: CreditCard, color: '#3b82f6', trend: '+ 15% Higher', trendColor: 'var(--success)' },
+    { title: 'Pending Balance', value: `₹${stats.pendingBalance.toLocaleString()}`, icon: Clock, color: '#f59e0b', trend: '- 5% Lower', trendColor: 'var(--danger)' },
   ];
 
   return (
@@ -67,60 +67,61 @@ export default function Dashboard() {
       {loading ? (
         <p>Loading stats...</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Stats Grid */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-            gap: '1.5rem' 
+            gap: '1.25rem' 
           }}>
             {statCards.map((card, index) => (
               <div key={index} className="surface" style={{ 
                 padding: '1.5rem', 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '1.25rem',
-                borderLeft: `4px solid ${card.color}`
+                gap: '1.25rem'
               }}>
                 <div style={{ 
                   backgroundColor: `${card.color}15`, 
                   color: card.color, 
-                  padding: '0.75rem', 
-                  borderRadius: '0.75rem' 
+                  width: '52px',
+                  height: '52px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  flexShrink: 0
                 }}>
                   <card.icon size={24} />
                 </div>
                 <div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '500' }}>{card.title}</p>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginTop: '0.25rem' }}>{card.value}</h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600' }}>{card.title}</p>
+                  <h2 style={{ fontSize: '1.625rem', fontWeight: '700', marginTop: '0.25rem', color: 'var(--text-main)' }}>{card.value}</h2>
+                  <p style={{ fontSize: '0.75rem', fontWeight: '600', color: card.trendColor, marginTop: '0.25rem' }}>
+                    {card.trend}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr', gap: '1.25rem' }}>
             {/* Recent Bookings */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="surface" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Recent Bookings</h3>
-                  <TrendingUp size={18} color="var(--text-muted)" />
-                </div>
-              </div>
               <DataTable columns={columns} data={stats.allBookings} initialPageSize={5} title="Recent Bookings" />
             </div>
 
             {/* Quick Actions / Tips */}
             <div className="surface" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.25rem' }}>Hall Availability</h3>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '700', marginBottom: '1.25rem', color: 'var(--text-main)', letterSpacing: '-0.01em' }}>Hall Availability</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
-                  <p style={{ fontWeight: '600', fontSize: '0.875rem' }}>Mini Function Hall</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Available for next weekend</p>
+                <div style={{ padding: '1.125rem', backgroundColor: '#f8fafc', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+                  <p style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-main)' }}>Mini Function Hall</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Available for next weekend</p>
                 </div>
-                <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
-                  <p style={{ fontWeight: '600', fontSize: '0.875rem' }}>Big Function Hall</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Fully booked this month</p>
+                <div style={{ padding: '1.125rem', backgroundColor: '#f8fafc', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+                  <p style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-main)' }}>Big Function Hall</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Fully booked this month</p>
                 </div>
               </div>
             </div>
