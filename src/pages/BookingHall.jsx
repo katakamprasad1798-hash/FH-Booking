@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { Plus, Edit, Trash2, Eye, CheckCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { mapImportRows, BOOKING_FIELD_ALIASES } from '../utils/importUtils';
 
 const initialFormData = { 
   function_type: '',
@@ -147,13 +148,14 @@ export default function BookingHall() {
   };
 
   const columns = [
-    { header: 'Function Date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
+    { header: 'Function Date', accessor: 'function_date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
     { header: 'Customer', accessor: 'user_name' },
     { header: 'Hall Type', accessor: 'hall_type' },
     { header: 'Type', accessor: 'function_type' },
-    { header: 'Balance (₹)', cell: (row) => row.balance_amount ? `₹${row.balance_amount}` : '-' },
+    { header: 'Balance (₹)', accessor: 'balance_amount', cell: (row) => row.balance_amount ? `₹${row.balance_amount}` : '-' },
     { 
-      header: 'Status', 
+      header: 'Status',
+      accessor: 'status',
       cell: (row) => {
         const { label, className } = getStatus(row);
         return <span className={`badge ${className}`}>{label}</span>;
@@ -194,15 +196,16 @@ export default function BookingHall() {
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
       
-      const newBookings = jsonData.map(row => {
-        const obj = {};
-        // Map common headers to internal keys
-        Object.keys(row).forEach(header => {
-          let key = header.toLowerCase().replace(/\s+/g, '_');
-          obj[key] = row[header];
-        });
-        return { ...initialFormData, ...obj };
+      const newBookings = mapImportRows(jsonData, {
+        defaults: initialFormData,
+        aliases: BOOKING_FIELD_ALIASES,
+        requiredFields: ['user_name', 'function_date', 'hall_type'],
       });
+
+      if (newBookings.length === 0) {
+        alert('No valid records found in the file. Check column headers and required fields.');
+        return;
+      }
 
       if (window.confirm(`Import ${newBookings.length} records from ${file.name}?`)) {
         try {

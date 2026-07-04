@@ -89,24 +89,17 @@ export default function DataTable({ columns, data, initialPageSize = 10, title =
     setCurrentPage(1);
   };
 
+  const visibleColumns = columns.filter(col => !col.exportOnly);
+
   const exportToExcel = () => {
     if (filteredData.length === 0) return;
 
-    // Prepare data for XLSX
     const exportData = filteredData.map(row => {
       const formattedRow = {};
       columns.forEach(col => {
-        if (col.header !== 'Action') {
-          let val = '';
-          if (col.accessor) {
-            val = row[col.accessor];
-          } else if (col.cell) {
-            // For complex cells, we try to get a string representation
-            // We'll pass the row to the cell function and if it returns a string/number, use it
-            // but cell usually returns JSX. So we prefer accessors for exports.
-            val = row[col.accessor] || '';
-          }
-          formattedRow[col.header] = val;
+        if (col.header !== 'Action' && col.accessor) {
+          const val = row[col.accessor];
+          formattedRow[col.header] = val ?? '';
         }
       });
       return formattedRow;
@@ -224,7 +217,7 @@ export default function DataTable({ columns, data, initialPageSize = 10, title =
         <table>
           <thead>
             <tr>
-              {columns.map((col, i) => (
+              {visibleColumns.map((col, i) => (
                 <th key={i} style={{ minWidth: col.width || 'auto' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <span>{col.header}</span>
@@ -253,16 +246,20 @@ export default function DataTable({ columns, data, initialPageSize = 10, title =
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleColumns.length} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No results found
                 </td>
               </tr>
             ) : (
               currentData.map((row, rowIndex) => (
                 <tr key={row.id || rowIndex}>
-                  {columns.map((col, colIndex) => (
+                  {visibleColumns.map((col, colIndex) => (
                     <td key={colIndex}>
-                      {col.cell ? col.cell(row) : row[col.accessor]}
+                      {col.cell
+                        ? col.cell(row)
+                        : (row[col.accessor] !== null && row[col.accessor] !== undefined && row[col.accessor] !== ''
+                            ? row[col.accessor]
+                            : '-')}
                     </td>
                   ))}
                 </tr>

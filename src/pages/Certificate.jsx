@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { Plus, Edit, Trash2, Eye, Printer, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { mapImportRows, CERTIFICATE_FIELD_ALIASES } from '../utils/importUtils';
 
 const initialFormData = {
   function_type: 'Marriage',
@@ -71,17 +72,16 @@ export default function Certificate() {
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-      const newCerts = jsonData.map(row => {
-        const obj = {};
-        Object.keys(row).forEach(header => {
-          let key = header.toLowerCase().replace(/\s+/g, '_');
-          // Handle Bridegroom S/O etc
-          if (key.includes('s/o')) key = 'bridegroom_so';
-          if (key.includes('d/o')) key = 'bride_do';
-          obj[key] = row[header];
-        });
-        return { ...initialFormData, ...obj };
+      const newCerts = mapImportRows(jsonData, {
+        defaults: initialFormData,
+        aliases: CERTIFICATE_FIELD_ALIASES,
+        requiredFields: ['bridegroom', 'bride'],
       });
+
+      if (newCerts.length === 0) {
+        alert('No valid certificate records found. Check column headers and required fields.');
+        return;
+      }
 
       if (window.confirm(`Import ${newCerts.length} records from ${file.name}?`)) {
         try {
@@ -276,7 +276,7 @@ export default function Certificate() {
     { header: 'Receipt No', accessor: 'receipt_no' },
     { header: 'Bridegroom', accessor: 'bridegroom' },
     { header: 'Bride', accessor: 'bride' },
-    { header: 'Function Date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
+    { header: 'Function Date', accessor: 'function_date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
     {
       header: 'Action',
       cell: (row) => (

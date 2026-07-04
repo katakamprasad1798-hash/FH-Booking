@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { Plus, Edit, Trash2, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { mapImportRows, BILLING_FIELD_ALIASES } from '../utils/importUtils';
 
 const initialFormData = { booking_id: '', amount: '', status: 'Pending', date: '' };
 
@@ -45,15 +46,26 @@ export default function Billing() {
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
       
-      const newBills = jsonData.map(row => {
-        const obj = {};
-        Object.keys(row).forEach(header => {
-          let key = header.toLowerCase().replace(/\s+/g, '_');
-          if (key === 'booking_ref') key = 'booking_id';
-          obj[key] = row[header];
-        });
-        return { ...initialFormData, ...obj };
-      });
+      const newBills = mapImportRows(jsonData, {
+        defaults: initialFormData,
+        aliases: BILLING_FIELD_ALIASES,
+        requiredFields: ['amount'],
+      }).map((bill) => {
+        if (!bill.booking_id && bill.booking_name) {
+          const match = bookings.find(
+            (b) =>
+              (b.user_name || '').toLowerCase() === String(bill.booking_name).toLowerCase() ||
+              `${b.user_name} - ${b.function_date}`.toLowerCase() === String(bill.booking_name).toLowerCase()
+          );
+          if (match) bill.booking_id = match.id;
+        }
+        return bill;
+      }).filter((bill) => bill.booking_id);
+
+      if (newBills.length === 0) {
+        alert('No valid billing records found. Ensure amount and booking reference columns are filled.');
+        return;
+      }
 
       if (window.confirm(`Import ${newBills.length} records from ${file.name}?`)) {
         try {
@@ -120,10 +132,12 @@ export default function Billing() {
 
   const columns = [
     { header: 'Booking Ref', accessor: 'booking_name' },
-    { header: 'Amount', cell: (row) => `₹${row.amount.toLocaleString()}` },
-    { header: 'Date', cell: (row) => new Date(row.date).toLocaleDateString() },
+    { header: 'Booking ID', accessor: 'booking_id', exportOnly: true },
+    { header: 'Amount', accessor: 'amount', cell: (row) => row.amount != null && row.amount !== '' ? `₹${Number(row.amount).toLocaleString()}` : '-' },
+    { header: 'Date', accessor: 'date', cell: (row) => row.date ? new Date(row.date).toLocaleDateString() : '-' },
     { 
-      header: 'Status', 
+      header: 'Status',
+      accessor: 'status',
       cell: (row) => {
         let badgeClass = 'badge-neutral';
         if (row.status === 'Paid') badgeClass = 'badge-paid';
