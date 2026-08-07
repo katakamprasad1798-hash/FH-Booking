@@ -3,7 +3,9 @@ import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../a
 import DashboardLayout from '../components/DashboardLayout';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import { Plus, Edit, Trash2, Eye, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, CheckCircle, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { mapImportRows, BOOKING_FIELD_ALIASES } from '../utils/importUtils';
 
 const initialFormData = { 
   function_type: '',
@@ -127,19 +129,36 @@ export default function BookingHall() {
     }
   };
 
+  const getStatus = (row) => {
+    const today = new Date().toISOString().split('T')[0];
+    const balance = parseFloat(row.balance_amount) || 0;
+    const advance = parseFloat(row.advance_amount) || 0;
+    const total = parseFloat(row.total_amount) || 0;
+
+    if (row.function_date && row.function_date < today) {
+      return { label: 'Completed', className: 'badge-completed' };
+    }
+    if (balance <= 0 && total > 0) {
+      return { label: 'Paid', className: 'badge-paid' };
+    }
+    if (advance > 0) {
+      return { label: 'Partially Paid', className: 'badge-partial' };
+    }
+    return { label: 'Pending', className: 'badge-pending' };
+  };
+
   const columns = [
-    { header: 'Function Date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
+    { header: 'Function Date', accessor: 'function_date', cell: (row) => row.function_date ? new Date(row.function_date).toLocaleDateString() : '-' },
     { header: 'Customer', accessor: 'user_name' },
     { header: 'Hall Type', accessor: 'hall_type' },
     { header: 'Type', accessor: 'function_type' },
-    { header: 'Balance (₹)', cell: (row) => row.balance_amount ? `₹${row.balance_amount}` : '-' },
+    { header: 'Balance (₹)', accessor: 'balance_amount', cell: (row) => row.balance_amount ? `₹${row.balance_amount}` : '-' },
     { 
-      header: 'Status', 
+      header: 'Status',
+      accessor: 'status',
       cell: (row) => {
-        const statusClass = row.status === 'Paid' ? 'badge-paid' : 
-                            row.status === 'Completed' ? 'badge-completed' : 
-                            'badge-inprogress';
-        return <span className={`badge ${statusClass}`}>{row.status || 'In Progress'}</span>;
+        const { label, className } = getStatus(row);
+        return <span className={`badge ${className}`}>{label}</span>;
       }
     },
     { 
@@ -165,10 +184,64 @@ export default function BookingHall() {
     }
   ];
 
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const bstr = event.target.result;
+      const workbook = XLSX.read(bstr, { type: 'binary' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      
+      const newBookings = mapImportRows(jsonData, {
+        defaults: initialFormData,
+        aliases: BOOKING_FIELD_ALIASES,
+        requiredFields: ['user_name', 'function_date', 'hall_type'],
+      });
+
+      if (newBookings.length === 0) {
+        alert('No valid records found in the file. Check column headers and required fields.');
+        return;
+      }
+
+      if (window.confirm(`Import ${newBookings.length} records from ${file.name}?`)) {
+        try {
+          setLoading(true);
+          for (let booking of newBookings) {
+            await createBooking(booking);
+          }
+          alert('Import successful!');
+          loadData();
+        } catch (err) {
+          alert('Error during import: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset for next use
+  };
+
   const headerAction = (
-    <button className="btn btn-primary" onClick={handleOpenCreate}>
-      <Plus size={16} /> Create Booking
-    </button>
+    <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <input 
+        type="file" 
+        id="import-file" 
+        accept=".csv,.xlsx,.xls" 
+        style={{ display: 'none' }} 
+        onChange={handleImportFile} 
+      />
+      <label htmlFor="import-file" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Download size={16} style={{ transform: 'rotate(180deg)' }} /> Import (CSV/Excel)
+      </label>
+      <button className="btn btn-primary" onClick={handleOpenCreate}>
+        <Plus size={16} /> Create Booking
+      </button>
+    </div>
   );
 
   return (
